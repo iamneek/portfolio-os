@@ -15,8 +15,13 @@ const vt323 = VT323({
 });
 
 export const metadata: Metadata = {
-  title: "Desktop Portfolio",
+  title: "Neek Kafle - Portfolio OS",
   description: "A monochrome desktop portfolio powered by GitHub.",
+  icons: {
+    icon: "/logo fillled.svg",
+    shortcut: "/logo fillled.svg",
+    apple: "/logo fillled.svg",
+  },
 };
 
 export default function RootLayout({

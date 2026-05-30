@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { PortfolioData } from "@/lib/types";
 import styles from "./desktop-shell.module.css";
@@ -137,9 +138,48 @@ export function DesktopShell({ data }: DesktopShellProps) {
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [taskIconMenu, setTaskIconMenu] = useState<TaskIconMenuState | null>(null);
+  const [isStartMenuOpen, setIsStartMenuOpen] = useState(false);
+  const [isStartMenuClosing, setIsStartMenuClosing] = useState(false);
+  const [startQuery, setStartQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [draggingIconId, setDraggingIconId] = useState<WindowId | null>(null);
   const topWindowId = useMemo(() => getTopVisibleWindowId(windowStates), [windowStates]);
+  const startMenuCloseTimerRef = useRef<number | null>(null);
+
+  function closeStartMenu(immediate = false) {
+    if (!isStartMenuOpen && !isStartMenuClosing) {
+      return;
+    }
+
+    if (startMenuCloseTimerRef.current) {
+      window.clearTimeout(startMenuCloseTimerRef.current);
+      startMenuCloseTimerRef.current = null;
+    }
+
+    if (immediate) {
+      setIsStartMenuClosing(false);
+      setIsStartMenuOpen(false);
+      return;
+    }
+
+    setIsStartMenuClosing(true);
+    startMenuCloseTimerRef.current = window.setTimeout(() => {
+      setIsStartMenuOpen(false);
+      setIsStartMenuClosing(false);
+      startMenuCloseTimerRef.current = null;
+    }, 150);
+  }
+
+  function openStartMenu() {
+    if (startMenuCloseTimerRef.current) {
+      window.clearTimeout(startMenuCloseTimerRef.current);
+      startMenuCloseTimerRef.current = null;
+    }
+
+    setStartQuery("");
+    setIsStartMenuClosing(false);
+    setIsStartMenuOpen(true);
+  }
 
   useEffect(() => {
     const updateClock = () => {
@@ -153,6 +193,14 @@ export function DesktopShell({ data }: DesktopShellProps) {
     updateClock();
     const timer = window.setInterval(updateClock, 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (startMenuCloseTimerRef.current) {
+        window.clearTimeout(startMenuCloseTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -276,12 +324,14 @@ export function DesktopShell({ data }: DesktopShellProps) {
       if (event.key === "Escape") {
         setContextMenu(null);
         setTaskIconMenu(null);
+        closeStartMenu();
       }
     }
 
     function onGlobalPointerDown() {
       setContextMenu(null);
       setTaskIconMenu(null);
+      closeStartMenu();
     }
 
     window.addEventListener("keydown", onEscape);
@@ -644,6 +694,7 @@ export function DesktopShell({ data }: DesktopShellProps) {
   function startDesktopSelection(event: ReactPointerEvent<HTMLDivElement>) {
     setContextMenu(null);
     setTaskIconMenu(null);
+    closeStartMenu();
 
     if (event.target !== event.currentTarget || event.button !== 0) {
       return;
@@ -681,6 +732,7 @@ export function DesktopShell({ data }: DesktopShellProps) {
   function openDesktopMenu(event: React.MouseEvent<HTMLDivElement>) {
     event.preventDefault();
     setTaskIconMenu(null);
+    closeStartMenu();
 
     const menuWidth = 190;
     const menuHeight = 166;
@@ -694,6 +746,7 @@ export function DesktopShell({ data }: DesktopShellProps) {
   function refreshDesktop() {
     setContextMenu(null);
     setTaskIconMenu(null);
+    closeStartMenu();
     setSelectedIcons([]);
     setIconPositions(defaultIconPositions);
     setSelection(null);
@@ -709,18 +762,21 @@ export function DesktopShell({ data }: DesktopShellProps) {
   function openHelp() {
     setContextMenu(null);
     setTaskIconMenu(null);
+    closeStartMenu();
     openWindow("terminal");
   }
 
   function openGithub() {
     setContextMenu(null);
     setTaskIconMenu(null);
+    closeStartMenu();
     window.open(data.profile.url, "_blank", "noopener,noreferrer");
   }
 
   function openContact() {
     setContextMenu(null);
     setTaskIconMenu(null);
+    closeStartMenu();
     const profileUrl = data.profile.url.replace(/\/+$/, "");
     window.open(`${profileUrl}?tab=followers`, "_blank", "noopener,noreferrer");
   }
@@ -729,6 +785,7 @@ export function DesktopShell({ data }: DesktopShellProps) {
     event.preventDefault();
     event.stopPropagation();
     setContextMenu(null);
+    closeStartMenu();
 
     const menuWidth = 168;
     const menuHeight = 86;
@@ -745,6 +802,7 @@ export function DesktopShell({ data }: DesktopShellProps) {
 
     const { id } = taskIconMenu;
     setTaskIconMenu(null);
+    closeStartMenu();
 
     setWindowStates((current) => {
       const state = current[id];
@@ -779,6 +837,7 @@ export function DesktopShell({ data }: DesktopShellProps) {
 
     const { id } = taskIconMenu;
     setTaskIconMenu(null);
+    closeStartMenu();
     closeWindow(id);
   }
 
@@ -789,6 +848,24 @@ export function DesktopShell({ data }: DesktopShellProps) {
 
     const { id } = taskIconMenu;
     setTaskIconMenu(null);
+    closeStartMenu();
+    openWindow(id);
+  }
+
+  function toggleStartMenu(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    setContextMenu(null);
+    setTaskIconMenu(null);
+    if (isStartMenuOpen && !isStartMenuClosing) {
+      closeStartMenu();
+      return;
+    }
+
+    openStartMenu();
+  }
+
+  function openFromStartMenu(id: WindowId) {
+    closeStartMenu();
     openWindow(id);
   }
 
@@ -951,7 +1028,13 @@ export function DesktopShell({ data }: DesktopShellProps) {
       <footer className={styles.taskbar}>
         <div className={styles.taskbarLeft} />
         <div className={styles.centerDock}>
-          <button type="button" className={styles.start} title="Start Menu">
+          <button
+            type="button"
+            className={styles.start}
+            title="Start Menu"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={toggleStartMenu}
+          >
             <StartIcon />
           </button>
           <div className={styles.taskItems}>
@@ -987,6 +1070,62 @@ export function DesktopShell({ data }: DesktopShellProps) {
           </div>
         </div>
       </footer>
+
+      {isStartMenuOpen || isStartMenuClosing ? (
+        <div
+          className={`${styles.startMenu} ${isStartMenuClosing ? styles.startMenuClosing : ""}`}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <div className={styles.startMenuHeader}>
+            <div className={styles.startMenuBrand}>
+              <Image
+                src="/logo 3.svg"
+                alt="Neek's Portfolio"
+                width={16}
+                height={16}
+                className={styles.startMenuBrandIcon}
+              />
+              <strong className={styles.startMenuTitle}>Neek's Portfolio</strong>
+            </div>
+          </div>
+          <div className={styles.startMenuSearchWrap}>
+            <input
+              type="search"
+              className={styles.startMenuSearch}
+              value={startQuery}
+              onChange={(event) => setStartQuery(event.target.value)}
+              placeholder="Search applications"
+              aria-label="Search applications"
+            />
+          </div>
+          <div className={styles.startMenuApps}>
+            {("file manager".includes(startQuery.trim().toLowerCase()) || !startQuery.trim()) && (
+              <button type="button" className={styles.startMenuItem} onClick={() => openFromStartMenu("files")}>
+                <AppIcon id="files" className={styles.startMenuItemIcon} />
+                <span>File Manager</span>
+              </button>
+            )}
+            {("terminal".includes(startQuery.trim().toLowerCase()) || !startQuery.trim()) && (
+              <button type="button" className={styles.startMenuItem} onClick={() => openFromStartMenu("terminal")}>
+                <AppIcon id="terminal" className={styles.startMenuItemIcon} />
+                <span>Terminal</span>
+              </button>
+            )}
+            {("github".includes(startQuery.trim().toLowerCase()) || !startQuery.trim()) && (
+              <a className={styles.startMenuItem} href={data.profile.url} target="_blank" rel="noreferrer">
+                <GithubIcon className={styles.startMenuItemIcon} />
+                <span>GitHub</span>
+              </a>
+            )}
+            {startQuery.trim() &&
+            !"file manager".includes(startQuery.trim().toLowerCase()) &&
+            !"terminal".includes(startQuery.trim().toLowerCase()) &&
+            !"github".includes(startQuery.trim().toLowerCase()) ? (
+              <p className={styles.startMenuEmpty}>No applications found.</p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {taskIconMenu ? (
         <div
@@ -1101,8 +1240,34 @@ function AppIcon({ id, className }: IconProps) {
 
 function StartIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M5 19V5h3l6 9V5h3v14h-3l-6-9v9H5Z" fill="currentColor" />
+    <span className={styles.startIconWrap} aria-hidden>
+      <Image
+        src="/logo fillled.svg"
+        alt="Start"
+        width={14}
+        height={14}
+        className={`${styles.startIcon} ${styles.startIconDefault}`}
+      />
+      <Image
+        src="/logo filled 2.svg"
+        alt="Start active"
+        width={14}
+        height={14}
+        className={`${styles.startIcon} ${styles.startIconHover}`}
+      />
+    </span>
+  );
+}
+
+function GithubIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 3a9 9 0 0 0-2.84 17.55c.45.08.62-.2.62-.44v-1.55c-2.52.55-3.05-1.08-3.05-1.08-.41-1.04-1-1.32-1-1.32-.82-.56.06-.55.06-.55.9.07 1.37.93 1.37.93.81 1.37 2.11.97 2.62.74.08-.58.31-.97.56-1.2-2-.23-4.11-1-4.11-4.43 0-.98.36-1.79.93-2.42-.09-.22-.4-1.14.09-2.37 0 0 .76-.24 2.5.93a8.71 8.71 0 0 1 4.56 0c1.74-1.17 2.5-.93 2.5-.93.49 1.23.18 2.15.09 2.37.58.63.93 1.44.93 2.42 0 3.44-2.12 4.19-4.14 4.42.33.28.61.82.61 1.66v2.46c0 .24.16.53.62.44A9 9 0 0 0 12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
