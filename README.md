@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Desktop Portfolio
 
-## Getting Started
+A Next.js portfolio designed like a Windows 11-inspired desktop with a monochrome hand-drawn retro style.
 
-First, run the development server:
+Data for projects, blog snippets, and failure logs is loaded from GitHub with caching suitable for Vercel.
+
+## Stack
+
+- Next.js (App Router, TypeScript)
+- Server-side GitHub data fetching
+- CSS modules for stylized desktop UI
+- Deploy-ready for Vercel
+
+## Local setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy env template:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Fill in variables in `.env.local`:
+
+- `GITHUB_USERNAME`: your GitHub username (required for live data)
+- `GITHUB_TOKEN`: GitHub personal access token (recommended)
+- `GITHUB_BLOG_REPO`: repo used for markdown blog files
+- `GITHUB_BLOG_PATH`: folder path for blog markdown files (default `content/blog`)
+- `GITHUB_FAILURE_REPO`: repo where failure issues are tracked
+- `GITHUB_FAILURE_LABEL`: label used for failure issues (default `failure`)
+
+4. Start development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## GitHub content model
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Projects: non-fork repositories from `GITHUB_USERNAME`
+- Blog: `.md`/`.mdx` files discovered under `GITHUB_BLOG_PATH`
+- Failures: GitHub issues in `GITHUB_FAILURE_REPO` filtered by `GITHUB_FAILURE_LABEL`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+If GitHub values are missing or API calls fail, the app renders sample fallback content with warnings.
 
-## Learn More
+## Deploy to Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. Push this repo to GitHub.
+2. Import project in Vercel.
+3. Add the same env vars from `.env.local` in Vercel project settings.
+4. Deploy.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Because pages are server-rendered with revalidation, content updates on GitHub are reflected without full redeploys.
